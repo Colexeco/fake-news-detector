@@ -26,5 +26,24 @@ news = pl.concat([true_news,fake_news])
 news = news.with_columns(news['Target'].apply(lambda x: 1 if x == 'True' else 0).alias('label'))
 #Shuffle rows
 news = news.with_columns(random = pl.Series(np.random.rand(len(news))))
-shuffled_news = news.sort("random")
-shuffled_news = shuffled_news.drop("random")
+news = news.sort("random")
+news = news.drop("random")
+label_size = [news['label'].sum(),len(news['label'])-news['label'].sum()]
+#percentage of true and fake news
+plt.pie(label_size,explode=[0.1,0.1],colors=['firebrick','navy'],startangle=90,shadow=True,labels=['Fake','True'],autopct='%1.1f%%')
+plt.savefig('pie.png')
+# Train-Validation-Test set split into 70:15:15 ratio
+news = news.to_pandas()
+# Train-Temp split
+train_text, temp_text, train_labels, temp_labels = train_test_split(news['title'], news['label'], random_state=2018, test_size=0.3, stratify=news['Target'])
+# Validation-Test split
+val_text, test_text, val_labels, test_labels = train_test_split(temp_text, temp_labels, random_state=2018, test_size=0.5, stratify=temp_labels)
+# Load BERT model and tokenizer via HuggingFace Transformers
+bert = AutoModel.from_pretrained('bert-base-uncased')
+tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
+# Plot histogram of the number of words in train data 'title'
+seq_len = [len(title.split()) for title in train_text]
+pl.Series(seq_len).hist(bins = 40)
+plt.figure()
+plt.xlabel('Number of Words')
+plt.ylabel('Number of texts')
