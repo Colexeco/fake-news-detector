@@ -43,7 +43,54 @@ bert = AutoModel.from_pretrained('bert-base-uncased')
 tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
 # Plot histogram of the number of words in train data 'title'
 seq_len = [len(title.split()) for title in train_text]
-pl.Series(seq_len).hist(bins = 40)
 plt.figure()
+plt.hist(seq_len, bins=40)
 plt.xlabel('Number of Words')
 plt.ylabel('Number of texts')
+plt.savefig('BERT.png')
+
+# Majority of titles above have word length under 15. So, we set max title length as 15
+MAX_LENGTH = 15
+# Tokenize and encode sequences in the train set
+tokens_train = tokenizer.batch_encode_plus(
+    train_text.tolist(),
+    max_length = MAX_LENGTH,
+    pad_to_max_length=True,
+    truncation=True
+)
+# tokenize and encode sequences in the validation set
+tokens_val = tokenizer.batch_encode_plus(
+    val_text.tolist(),
+    max_length = MAX_LENGTH,
+    pad_to_max_length=True,
+    truncation=True
+)
+# tokenize and encode sequences in the test set
+tokens_test = tokenizer.batch_encode_plus(
+    test_text.tolist(),
+    max_length = MAX_LENGTH,
+    pad_to_max_length=True,
+    truncation=True
+)
+
+# Convert lists to tensors
+train_seq = torch.tensor(tokens_train['input_ids'])
+train_mask = torch.tensor(tokens_train['attention_mask'])
+train_y = torch.tensor(train_labels.tolist())
+val_seq = torch.tensor(tokens_val['input_ids'])
+val_mask = torch.tensor(tokens_val['attention_mask'])
+val_y = torch.tensor(val_labels.tolist())
+test_seq = torch.tensor(tokens_test['input_ids'])
+test_mask = torch.tensor(tokens_test['attention_mask'])
+test_y = torch.tensor(test_labels.tolist())
+
+# Data Loader structure definition
+from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+batch_size = 32                                               #define a batch size
+train_data = TensorDataset(train_seq, train_mask, train_y)    # wrap tensors
+train_sampler = RandomSampler(train_data)                     # sampler for sampling the data during training
+train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size)
+                                                              # dataLoader for train set
+val_data = TensorDataset(val_seq, val_mask, val_y)            # wrap tensors
+val_sampler = SequentialSampler(val_data)                     # sampler for sampling the data during training
+val_dataloader = DataLoader(val_data, sampler = val_sampler, batch_size=batch_size) # dataLoader for validation set
