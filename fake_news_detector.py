@@ -97,7 +97,7 @@ val_sampler = SequentialSampler(val_data)                     # sampler for samp
 val_dataloader = DataLoader(val_data, sampler = val_sampler, batch_size=batch_size) # dataLoader for validation set
 for param in bert.parameters():
     param.requires_grad = False    # false here means gradient need not be computed
-    
+
 model = BERT_Arch(bert)
 # Defining the hyperparameters (optimizer, weights of the classes and the epochs)
 # Define the optimizer
@@ -151,3 +151,32 @@ def evaluate():
       preds = preds.detach().cpu().numpy()
   avg_loss = total_loss / len(val_dataloader)         # compute the validation loss of the epoch
   return avg_loss
+
+# Train and predict
+best_valid_loss = float('inf')
+train_losses=[]                   # empty lists to store training and validation loss of each epoch
+valid_losses=[]
+
+for epoch in range(epochs):     
+    print('\n Epoch {:} / {:}'.format(epoch + 1, epochs))     
+    train_loss = train()                       # train model
+    valid_loss = evaluate()                    # evaluate model
+    if valid_loss < best_valid_loss:              # save the best model
+        best_valid_loss = valid_loss
+        torch.save(model.state_dict(), 'c2_new_model_weights.pt')
+    train_losses.append(train_loss)               # append training and validation loss
+    valid_losses.append(valid_loss)
+    
+    print(f'\nTraining Loss: {train_loss:.3f}')
+    print(f'Validation Loss: {valid_loss:.3f}')
+
+# load weights of best model
+path = 'c1_fakenews_weights.pt'
+model.load_state_dict(torch.load(path))
+
+with torch.no_grad():
+  preds = model(test_seq, test_mask)
+  preds = preds.detach().cpu().numpy()
+  
+preds = np.argmax(preds, axis = 1)
+print(classification_report(test_y, preds))
