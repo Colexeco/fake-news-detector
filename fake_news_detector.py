@@ -99,6 +99,7 @@ for param in bert.parameters():
     param.requires_grad = False    # false here means gradient need not be computed
 
 model = BERT_Arch(bert)
+model.to(device)
 # Defining the hyperparameters (optimizer, weights of the classes and the epochs)
 # Define the optimizer
 from transformers import AdamW
@@ -118,7 +119,7 @@ def train():
     if step % 50 == 0 and not step == 0:                        # progress update after every 50 batches.
       print('  Batch {:>5,}  of  {:>5,}.'.format(step, len(train_dataloader)))
     batch = [r for r in batch]                                  # push the batch to gpu
-    sent_id, mask, labels = batch 
+    sent_id, mask, labels = [r.to(device) for r in batch]
     model.zero_grad()                                           # clear previously calculated gradients
     preds = model(sent_id, mask)                                # get model predictions for current batch
     loss = cross_entropy(preds, labels)                         # compute loss between actual & predicted values
@@ -143,7 +144,7 @@ def evaluate():
       print('  Batch {:>5,}  of  {:>5,}.'.format(step, len(val_dataloader)))
                                                   # Report progress
     batch = [t for t in batch]                    # Push the batch to GPU
-    sent_id, mask, labels = batch
+    sent_id, mask, labels = [r.to(device) for r in batch]
     with torch.no_grad():                         # Deactivate autograd
       preds = model(sent_id, mask)                # Model predictions
       loss = cross_entropy(preds,labels)          # Compute the validation loss between actual and predicted values
@@ -156,14 +157,15 @@ def evaluate():
 best_valid_loss = float('inf')
 train_losses=[]                   # empty lists to store training and validation loss of each epoch
 valid_losses=[]
-
+curr = 0
 for epoch in range(epochs):     
+    curr = curr + 1
     print('\n Epoch {:} / {:}'.format(epoch + 1, epochs))     
     train_loss = train()                       # train model
     valid_loss = evaluate()                    # evaluate model
     if valid_loss < best_valid_loss:              # save the best model
         best_valid_loss = valid_loss
-        torch.save(model.state_dict(), 'c2_new_model_weights.pt')
+        torch.save(model.state_dict(), f'c{curr}_new_model_weights.pt')
     train_losses.append(train_loss)               # append training and validation loss
     valid_losses.append(valid_loss)
     
@@ -197,6 +199,8 @@ tokens_unseen = tokenizer.batch_encode_plus(
 )
 unseen_seq = torch.tensor(tokens_unseen['input_ids'])
 unseen_mask = torch.tensor(tokens_unseen['attention_mask'])
+unseen_seq = unseen_seq.to(device)
+unseen_mask = unseen_mask.to(device)
 
 with torch.no_grad():
   preds = model(unseen_seq, unseen_mask)
