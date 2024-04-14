@@ -11,6 +11,7 @@ from sklearn.metrics import classification_report
 import torch
 import torch.nn as nn
 import opendatasets as od
+from BERT_architecture import BERT_Arch
 device = torch.device("cuda")
 dataset = 'https://www.kaggle.com/datasets/jainpooja/fake-news-detection'
 od.download(dataset)
@@ -96,3 +97,57 @@ val_sampler = SequentialSampler(val_data)                     # sampler for samp
 val_dataloader = DataLoader(val_data, sampler = val_sampler, batch_size=batch_size) # dataLoader for validation set
 for param in bert.parameters():
     param.requires_grad = False    # false here means gradient need not be computed
+    
+model = BERT_Arch(bert)
+# Defining the hyperparameters (optimizer, weights of the classes and the epochs)
+# Define the optimizer
+from transformers import AdamW
+optimizer = AdamW(model.parameters(),
+                  lr = 1e-5)          # learning rate
+# Define the loss function
+cross_entropy  = nn.NLLLoss() 
+# Number of training epochs
+epochs = 2
+
+# Defining training and evaluation functions
+def train():  
+  model.train()
+  total_loss, total_accuracy = 0, 0
+  
+  for step,batch in enumerate(train_dataloader):                # iterate over batches
+    if step % 50 == 0 and not step == 0:                        # progress update after every 50 batches.
+      print('  Batch {:>5,}  of  {:>5,}.'.format(step, len(train_dataloader)))
+    batch = [r for r in batch]                                  # push the batch to gpu
+    sent_id, mask, labels = batch 
+    model.zero_grad()                                           # clear previously calculated gradients
+    preds = model(sent_id, mask)                                # get model predictions for current batch
+    loss = cross_entropy(preds, labels)                         # compute loss between actual & predicted values
+    total_loss = total_loss + loss.item()                       # add on to the total loss
+    loss.backward()                                             # backward pass to calculate the gradients
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)     # clip gradients to 1.0. It helps in preventing exploding gradient problem
+    optimizer.step()                                            # update parameters
+    preds=preds.detach().cpu().numpy()                          # model predictions are stored on GPU. So, push it to CPU
+
+  avg_loss = total_loss / len(train_dataloader)                 # compute training loss of the epoch  
+                                                                # reshape predictions in form of (# samples, # classes)
+  return avg_loss                                 # returns the loss and predictions
+
+def evaluate():  
+  print("\nEvaluating...")  
+  model.eval()                                    # Deactivate dropout layers
+  total_loss, total_accuracy = 0, 0  
+  for step,batch in enumerate(val_dataloader):    # Iterate over batches  
+    if step % 50 == 0 and not step == 0:          # Progress update every 50 batches.     
+                                                  # Calculate elapsed time in minutes.
+                                                  # Elapsed = format_time(time.time() - t0)
+      print('  Batch {:>5,}  of  {:>5,}.'.format(step, len(val_dataloader)))
+                                                  # Report progress
+    batch = [t for t in batch]                    # Push the batch to GPU
+    sent_id, mask, labels = batch
+    with torch.no_grad():                         # Deactivate autograd
+      preds = model(sent_id, mask)                # Model predictions
+      loss = cross_entropy(preds,labels)          # Compute the validation loss between actual and predicted values
+      total_loss = total_loss + loss.item()
+      preds = preds.detach().cpu().numpy()
+  avg_loss = total_loss / len(val_dataloader)         # compute the validation loss of the epoch
+  return avg_loss

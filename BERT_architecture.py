@@ -19,13 +19,3 @@ class BERT_Arch(nn.Module):
       x = self.fc2(x)                           # output layer
       x = self.softmax(x)                       # apply softmax activation
       return x
-model = BERT_Arch(bert)
-# Defining the hyperparameters (optimizer, weights of the classes and the epochs)
-# Define the optimizer
-from transformers import AdamW
-optimizer = AdamW(model.parameters(),
-                  lr = 1e-5)          # learning rate
-# Define the loss function
-cross_entropy  = nn.NLLLoss() 
-# Number of training epochs
-epochs = 2
