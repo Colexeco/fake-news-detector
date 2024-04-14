@@ -94,3 +94,5 @@ train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batc
 val_data = TensorDataset(val_seq, val_mask, val_y)            # wrap tensors
 val_sampler = SequentialSampler(val_data)                     # sampler for sampling the data during training
 val_dataloader = DataLoader(val_data, sampler = val_sampler, batch_size=batch_size) # dataLoader for validation set
+for param in bert.parameters():
+    param.requires_grad = False    # false here means gradient need not be computed
