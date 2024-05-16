@@ -173,7 +173,7 @@ for epoch in range(epochs):
     print(f'Validation Loss: {valid_loss:.3f}')
 
 # load weights of best model
-path = 'c1_fakenews_weights.pt'
+path = 'c2_new_model_weights.pt'
 model.load_state_dict(torch.load(path))
 
 with torch.no_grad():
@@ -190,10 +190,10 @@ unseen_news_text = ["Donald Trump Sends Out Embarrassing New Year’s Eve Messag
                     "Trump administration issues new rules on U.S. visa waivers"                          # True
                     ]
 # tokenize and encode sequences in the test set
-MAX_LENGHT = 15
+MAX_LENGTH = 15
 tokens_unseen = tokenizer.batch_encode_plus(
     unseen_news_text,
-    max_length = MAX_LENGHT,
+    max_length = MAX_LENGTH,
     pad_to_max_length=True,
     truncation=True
 )
