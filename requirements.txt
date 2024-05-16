@@ -1,0 +1,9 @@
+polars
+pyarrow
+numpy
+pycaret
+transformers
+matplotlib
+scikit-learn
+torch
+opendatasets
