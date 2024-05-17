@@ -12,6 +12,8 @@ import torch
 import torch.nn as nn
 import opendatasets as od
 from BERT_architecture import BERT_Arch
+#python garbage collector
+import gc
 device = torch.device("cuda")
 dataset = 'https://www.kaggle.com/datasets/jainpooja/fake-news-detection'
 od.download(dataset)
@@ -75,19 +77,19 @@ tokens_test = tokenizer.batch_encode_plus(
 )
 
 # Convert lists to tensors
-train_seq = torch.tensor(tokens_train['input_ids'])
-train_mask = torch.tensor(tokens_train['attention_mask'])
-train_y = torch.tensor(train_labels.tolist())
-val_seq = torch.tensor(tokens_val['input_ids'])
-val_mask = torch.tensor(tokens_val['attention_mask'])
-val_y = torch.tensor(val_labels.tolist())
-test_seq = torch.tensor(tokens_test['input_ids'])
-test_mask = torch.tensor(tokens_test['attention_mask'])
-test_y = torch.tensor(test_labels.tolist())
+train_seq = torch.tensor(tokens_train['input_ids']).to(device)
+train_mask = torch.tensor(tokens_train['attention_mask']).to(device)
+train_y = torch.tensor(train_labels.tolist()).to(device)
+val_seq = torch.tensor(tokens_val['input_ids']).to(device)
+val_mask = torch.tensor(tokens_val['attention_mask']).to(device)
+val_y = torch.tensor(val_labels.tolist()).to(device)
+test_seq = torch.tensor(tokens_test['input_ids']).to(device)
+test_mask = torch.tensor(tokens_test['attention_mask']).to(device)
+test_y = torch.tensor(test_labels.tolist()).to(device)
 
 # Data Loader structure definition
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
-batch_size = 32                                               #define a batch size
+batch_size = 8                                               #define a batch size
 train_data = TensorDataset(train_seq, train_mask, train_y)    # wrap tensors
 train_sampler = RandomSampler(train_data)                     # sampler for sampling the data during training
 train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size)
@@ -171,10 +173,12 @@ for epoch in range(epochs):
     
     print(f'\nTraining Loss: {train_loss:.3f}')
     print(f'Validation Loss: {valid_loss:.3f}')
-
 # load weights of best model
 path = 'c2_new_model_weights.pt'
 model.load_state_dict(torch.load(path))
+#free up memory
+torch.cuda.empty_cache()
+gc.collect()
 
 with torch.no_grad():
   preds = model(test_seq, test_mask)
