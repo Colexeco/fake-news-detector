@@ -89,7 +89,7 @@ test_y = torch.tensor(test_labels.tolist()).to(device)
 
 # Data Loader structure definition
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
-batch_size = 8                                               #define a batch size
+batch_size = 32                                               #define a batch size
 train_data = TensorDataset(train_seq, train_mask, train_y)    # wrap tensors
 train_sampler = RandomSampler(train_data)                     # sampler for sampling the data during training
 train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=batch_size)
@@ -113,7 +113,8 @@ cross_entropy  = nn.NLLLoss()
 epochs = 2
 
 # Defining training and evaluation functions
-def train():  
+def train():
+  scaler = torch.cuda.amp.GradScaler()  
   model.train()
   total_loss, total_accuracy = 0, 0
   
@@ -124,13 +125,14 @@ def train():
     sent_id, mask, labels = [r.to(device) for r in batch]
     model.zero_grad()                                           # clear previously calculated gradients
     preds = model(sent_id, mask)                                # get model predictions for current batch
-    loss = cross_entropy(preds, labels)                         # compute loss between actual & predicted values
+    with torch.cuda.amp.autocast():                             # use mixed precision to save memory
+        loss = cross_entropy(preds, labels)                     # compute loss between actual & predicted values
     total_loss = total_loss + loss.item()                       # add on to the total loss
-    loss.backward()                                             # backward pass to calculate the gradients
+    scaler.scale(loss).backward()                               # backward pass to calculate the gradients
     torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)     # clip gradients to 1.0. It helps in preventing exploding gradient problem
-    optimizer.step()                                            # update parameters
+    scaler.step(optimizer)                                      # update parameters
     preds=preds.detach().cpu().numpy()                          # model predictions are stored on GPU. So, push it to CPU
-
+    scaler.update()
   avg_loss = total_loss / len(train_dataloader)                 # compute training loss of the epoch  
                                                                 # reshape predictions in form of (# samples, # classes)
   return avg_loss                                 # returns the loss and predictions
@@ -176,6 +178,7 @@ for epoch in range(epochs):
 # load weights of best model
 path = 'c2_new_model_weights.pt'
 model.load_state_dict(torch.load(path))
+
 #free up memory
 torch.cuda.empty_cache()
 gc.collect()
