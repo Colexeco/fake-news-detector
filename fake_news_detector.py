@@ -1,8 +1,6 @@
 #https://medium.com/@skillcate/detecting-fake-news-with-a-bert-model-9c666e3cdd9b
 import polars as pl
 import numpy as np
-import pycaret
-import transformers
 from transformers import AutoModel, BertTokenizerFast
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
