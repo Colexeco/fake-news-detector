@@ -3,6 +3,5 @@ fake_news_detection/
 __pycache__/
 kaggle.json
 logs.log
-*.png
 *.csv
 *.pt
